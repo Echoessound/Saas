@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Tabs, Input, Button, Table, Space, message, Tag, Alert, Statistic, Row, Col, Progress } from 'antd';
+import { Card, Tabs, Input, Button, Table, Space, message, Tag, Alert, Statistic, Row, Col, Progress, Modal, Descriptions, Select, Empty } from 'antd';
 import { SearchOutlined, DownloadOutlined, PrinterOutlined, BarChartOutlined } from '@ant-design/icons';
 import api from '../api';
-
 
 const CATEGORY_LABELS = {
   Basketball: '篮球 (Basketball)',
@@ -14,6 +13,19 @@ const LEVEL_LABELS = {
   Beginner: '初级',
   Intermediate: '中级',
   Advanced: '高级'
+};
+
+const TXN_TYPE_LABELS = {
+  PAYMENT: { text: '报名缴费', color: 'green' },
+  ADDITIONAL_PAY: { text: '增项补缴', color: 'blue' },
+  OPEN_REFUND: { text: '开放期全额退款', color: 'orange' },
+  CANCEL_50_REFUND: { text: '截止后违约退费(退50%)', color: 'red' }
+};
+
+const ORDER_STATUS_LABELS = {
+  PAID: { text: '已结算', color: 'green' },
+  CANCELLED: { text: '已取消', color: 'default' },
+  NONE: { text: '未报名', color: 'warning' }
 };
 
 // 导出 CSV（带 UTF-8 BOM，Excel 打开中文不乱码）
@@ -29,10 +41,24 @@ function exportCsv(filename, headers, rows) {
   URL.revokeObjectURL(url);
 }
 
+const fmtFee = v => `¥${Number(v).toFixed(2)}`;
+const fmtSignedFee = v => (
+  <span style={{ color: v >= 0 ? '#0ea472' : '#c0392b', fontWeight: 600 }}>
+    {v >= 0 ? '+' : ''}{fmtFee(v)}
+  </span>
+);
+
 export default function CommitteeDashboard() {
   const [stats, setStats] = useState(null);
+  const [allLeagues, setAllLeagues] = useState([]);
+  const [allMatches, setAllMatches] = useState([]);
 
-  const [leagueId, setLeagueId] = useState('');
+  // 统计卡片明细弹窗
+  const [cardModal, setCardModal] = useState({ type: null, data: [], loading: false });
+  // 每场比赛详情弹窗
+  const [matchModal, setMatchModal] = useState({ match: null, leagues: [], referee: null, loading: false });
+
+  const [leagueId, setLeagueId] = useState(undefined);
   const [leagueMatches, setLeagueMatches] = useState([]);
 
   const [matchNumber, setMatchNumber] = useState('');
@@ -47,13 +73,51 @@ export default function CommitteeDashboard() {
     api.get('/api/committee/stats')
       .then(res => setStats(res.data))
       .catch(() => message.error('加载统计数据失败'));
+    api.get('/api/committee/leagues')
+      .then(res => setAllLeagues(res.data))
+      .catch(() => message.error('加载省联赛列表失败'));
+    api.get('/api/matches')
+      .then(res => setAllMatches(res.data))
+      .catch(() => {});
   }, []);
 
-  // 职能 1: 查某省联赛已报项目
-  const queryLeagueMatches = async () => {
-    if (!leagueId) return message.warning('请输入省联赛 ID');
+  // ---------- 统计卡片明细 ----------
+  const openCardModal = async (type) => {
+    setCardModal({ type, data: [], loading: true });
     try {
-      const res = await api.get(`/api/committee/league-matches/${leagueId}`);
+      let res;
+      if (type === 'leagues') res = await api.get('/api/committee/leagues');
+      else if (type === 'paid') res = await api.get('/api/committee/orders?status=PAID');
+      else if (type === 'cancelled') res = await api.get('/api/committee/orders?status=CANCELLED');
+      else if (type === 'revenue') res = await api.get('/api/committee/transactions');
+      setCardModal({ type, data: res.data, loading: false });
+    } catch {
+      message.error('加载明细数据失败');
+      setCardModal({ type: null, data: [], loading: false });
+    }
+  };
+
+  // ---------- 每场比赛详情 ----------
+  const openMatchDetail = async (row) => {
+    setMatchModal({ match: row, leagues: [], referee: null, loading: true });
+    try {
+      const [resLg, resRef] = await Promise.all([
+        api.get(`/api/committee/match-leagues/${row.matchNumber}`),
+        api.get(`/api/committee/match-referee/${row.matchNumber}`)
+      ]);
+      setMatchModal({ match: row, leagues: resLg.data.leagues, referee: resRef.data.referee, loading: false });
+    } catch {
+      message.error('加载比赛详情失败');
+      setMatchModal({ match: null, leagues: [], referee: null, loading: false });
+    }
+  };
+
+  // 职能 1: 查某省联赛已报项目
+  const queryLeagueMatches = async (id) => {
+    const target = id ?? leagueId;
+    if (!target) return message.warning('请选择省联赛');
+    try {
+      const res = await api.get(`/api/committee/league-matches/${target}`);
       setLeagueMatches(res.data.matches);
     } catch {
       message.error('检索失败');
@@ -88,6 +152,50 @@ export default function CommitteeDashboard() {
   };
 
   const categoryMaxFee = stats ? Math.max(1, ...stats.perCategory.map(c => c.feeTotal)) : 1;
+  const matchInfo = matchModal.match
+    ? allMatches.find(m => m.matchNumber === matchModal.match.matchNumber)
+    : null;
+
+  // ---------- 统计卡片明细弹窗内容 ----------
+  const CARD_MODAL_TITLES = {
+    leagues: '参赛省联赛明细',
+    paid: '生效报名单明细（与下方每场报名统计口径一致）',
+    cancelled: '已取消报名单明细',
+    revenue: '实收金额构成明细（全部资金流水）'
+  };
+
+  const leagueDetailColumns = [
+    { title: '联赛 ID', dataIndex: 'leagueId', width: 90 },
+    { title: '省联赛名称', dataIndex: 'leagueName', ellipsis: true },
+    { title: '通信地址', dataIndex: 'leagueAddress', ellipsis: true },
+    {
+      title: '报名单状态', dataIndex: 'orderStatus', width: 110,
+      render: s => <Tag color={ORDER_STATUS_LABELS[s]?.color}>{ORDER_STATUS_LABELS[s]?.text || s}</Tag>
+    },
+    { title: '实缴费用', dataIndex: 'paidFee', width: 110, render: v => v == null ? '-' : fmtFee(v) }
+  ];
+
+  const orderDetailColumns = [
+    { title: '报名单编号', dataIndex: 'orderNumber', width: 210 },
+    { title: '省联赛', render: o => o.league?.leagueName || `#${o.leagueId}`, ellipsis: true },
+    { title: '场次', render: o => o.items.length, width: 60 },
+    { title: '实缴费用', dataIndex: 'paidFee', width: 110, render: fmtFee },
+    {
+      title: '报名项目', render: o => o.items.map(i => `#${i.matchNumber}`).join(' '), ellipsis: true
+    },
+    { title: '时间', dataIndex: 'createdAt', width: 165, render: d => new Date(d).toLocaleString() }
+  ];
+
+  const txnDetailColumns = [
+    { title: '流水号', dataIndex: 'txnId', ellipsis: true },
+    { title: '关联报名单', dataIndex: 'orderNumber', width: 200 },
+    {
+      title: '流水类型', dataIndex: 'type', width: 170,
+      render: t => <Tag color={TXN_TYPE_LABELS[t]?.color}>{TXN_TYPE_LABELS[t]?.text || t}</Tag>
+    },
+    { title: '金额', dataIndex: 'amount', width: 120, render: fmtSignedFee },
+    { title: '时间', dataIndex: 'createdAt', width: 165, render: d => new Date(d).toLocaleString() }
+  ];
 
   const tabItems = [
     {
@@ -96,10 +204,26 @@ export default function CommitteeDashboard() {
       children: stats ? (
         <div>
           <Row gutter={16} style={{ marginBottom: 24 }}>
-            <Col span={6}><Card className="stat-card stat-blue"><Statistic title="参赛省联赛数" value={stats.overview.leagueCount} /></Card></Col>
-            <Col span={6}><Card className="stat-card stat-green"><Statistic title="生效报名单" value={stats.overview.paidCount} /></Card></Col>
-            <Col span={6}><Card className="stat-card stat-amber"><Statistic title="已取消报名单" value={stats.overview.cancelledCount} /></Card></Col>
-            <Col span={6}><Card className="stat-card stat-navy"><Statistic title="实收金额 (¥)" value={stats.overview.netRevenue} precision={2} /></Card></Col>
+            <Col span={6}>
+              <Card className="stat-card stat-blue" onClick={() => openCardModal('leagues')}>
+                <Statistic title="参赛省联赛数（点击查看明细）" value={stats.overview.leagueCount} />
+              </Card>
+            </Col>
+            <Col span={6}>
+              <Card className="stat-card stat-green" onClick={() => openCardModal('paid')}>
+                <Statistic title="生效报名单（点击查看明细）" value={stats.overview.paidCount} />
+              </Card>
+            </Col>
+            <Col span={6}>
+              <Card className="stat-card stat-amber" onClick={() => openCardModal('cancelled')}>
+                <Statistic title="已取消报名单（点击查看明细）" value={stats.overview.cancelledCount} />
+              </Card>
+            </Col>
+            <Col span={6}>
+              <Card className="stat-card stat-navy" onClick={() => openCardModal('revenue')}>
+                <Statistic title="实收金额 (¥)（点击查看明细）" value={stats.overview.netRevenue} precision={2} />
+              </Card>
+            </Col>
           </Row>
 
           <Row gutter={16}>
@@ -123,7 +247,15 @@ export default function CommitteeDashboard() {
                     { title: '类别', dataIndex: 'category', render: c => CATEGORY_LABELS[c] || c },
                     { title: '级别', dataIndex: 'level', render: l => LEVEL_LABELS[l] || l },
                     { title: '参赛省联赛数', dataIndex: 'leagueCount' },
-                    { title: '收费合计', dataIndex: 'feeTotal', render: f => `¥${f}.00` }
+                    { title: '收费合计', dataIndex: 'feeTotal', render: f => fmtFee(f) },
+                    {
+                      title: '操作', width: 70,
+                      render: (_, row) => (
+                        <Button type="link" size="small" style={{ padding: 0 }} onClick={() => openMatchDetail(row)}>
+                          详情
+                        </Button>
+                      )
+                    }
                   ]}
                 />
               </Card>
@@ -133,7 +265,7 @@ export default function CommitteeDashboard() {
                 {stats.perCategory.map(c => (
                   <div key={c.category} style={{ marginBottom: 12 }}>
                     <div style={{ marginBottom: 4 }}>
-                      {CATEGORY_LABELS[c.category] || c.category} —— {c.itemCount} 项 / ¥{c.feeTotal}.00
+                      {CATEGORY_LABELS[c.category] || c.category} —— {c.itemCount} 项 / {fmtFee(c.feeTotal)}
                     </div>
                     <Progress percent={Math.round(c.feeTotal / categoryMaxFee * 100)} showInfo={false} />
                   </div>
@@ -146,9 +278,12 @@ export default function CommitteeDashboard() {
                   dataSource={stats.transactions}
                   pagination={false}
                   columns={[
-                    { title: '流水类型', dataIndex: 'type', render: t => <Tag>{t}</Tag> },
+                    {
+                      title: '流水类型', dataIndex: 'type',
+                      render: t => <Tag color={TXN_TYPE_LABELS[t]?.color}>{TXN_TYPE_LABELS[t]?.text || t}</Tag>
+                    },
                     { title: '笔数', dataIndex: 'count' },
-                    { title: '金额合计', dataIndex: 'total', render: t => `¥${t}.00` }
+                    { title: '金额合计', dataIndex: 'total', render: fmtSignedFee }
                   ]}
                 />
               </Card>
@@ -162,14 +297,20 @@ export default function CommitteeDashboard() {
       label: '1. 查询某省联赛已报比赛',
       children: (
         <div>
-          <Space style={{ marginBottom: 16 }} className="no-print">
-            <Input
-              placeholder="输入省联赛 ID (如 1001)"
+          <Space style={{ marginBottom: 16 }} className="no-print" wrap>
+            <Select
+              showSearch
+              placeholder="选择省联赛（可输入名称搜索）"
+              style={{ width: 380 }}
               value={leagueId}
-              onChange={e => setLeagueId(e.target.value)}
-              onPressEnter={queryLeagueMatches}
+              onChange={v => { setLeagueId(v); queryLeagueMatches(v); }}
+              options={allLeagues.map(l => ({
+                value: l.leagueId,
+                label: `${l.leagueName}（ID: ${l.leagueId}）`
+              }))}
+              filterOption={(input, option) => option.label.toLowerCase().includes(input.toLowerCase())}
             />
-            <Button type="primary" icon={<SearchOutlined />} onClick={queryLeagueMatches}>查询</Button>
+            <Button type="primary" icon={<SearchOutlined />} onClick={() => queryLeagueMatches()}>查询</Button>
             <Button icon={<DownloadOutlined />} disabled={leagueMatches.length === 0} onClick={() => exportCsv(
               `省联赛${leagueId}报名项目.csv`,
               ['比赛编号', '赛事类别', '赛事级别', '单项规费(元)'],
@@ -184,7 +325,7 @@ export default function CommitteeDashboard() {
               { title: '比赛编号', dataIndex: 'matchNumber', render: t => `#${t}` },
               { title: '赛事类别 (Category)', dataIndex: 'category', render: c => CATEGORY_LABELS[c] || c },
               { title: '赛事级别 (Level)', dataIndex: 'level', render: l => <Tag color="green">{LEVEL_LABELS[l] || l}</Tag> },
-              { title: '单项规费', dataIndex: 'fee', render: f => `¥${f}.00` }
+              { title: '单项规费', dataIndex: 'fee', render: fmtFee }
             ]}
           />
         </div>
@@ -279,6 +420,82 @@ export default function CommitteeDashboard() {
       <Card className="pretty-card">
         <Tabs defaultActiveKey="0" items={tabItems} />
       </Card>
+
+      {/* 统计卡片明细弹窗 */}
+      <Modal
+        title={CARD_MODAL_TITLES[cardModal.type]}
+        open={!!cardModal.type}
+        onCancel={() => setCardModal({ type: null, data: [], loading: false })}
+        footer={null}
+        width={920}
+      >
+        {cardModal.type === 'leagues' && (
+          <Table rowKey="leagueId" size="small" loading={cardModal.loading} dataSource={cardModal.data} columns={leagueDetailColumns} pagination={false} />
+        )}
+        {(cardModal.type === 'paid' || cardModal.type === 'cancelled') && (
+          <Table rowKey="orderNumber" size="small" loading={cardModal.loading} dataSource={cardModal.data} columns={orderDetailColumns} pagination={false} />
+        )}
+        {cardModal.type === 'revenue' && (
+          <>
+            <Alert
+              type="info" showIcon style={{ marginBottom: 12 }}
+              message={<span>资金净流入（实收金额）：
+                <strong style={{ color: '#0b2447' }}>{stats ? fmtFee(stats.overview.netRevenue) : '-'}</strong>
+                　= 全部缴费与补缴之和 − 各类退款之和</span>}
+            />
+            <Table rowKey="txnId" size="small" loading={cardModal.loading} dataSource={cardModal.data} columns={txnDetailColumns} pagination={{ pageSize: 8 }} />
+          </>
+        )}
+      </Modal>
+
+      {/* 每场比赛详情弹窗 */}
+      <Modal
+        title={matchModal.match ? `比赛 #${matchModal.match.matchNumber} 详情` : ''}
+        open={!!matchModal.match}
+        onCancel={() => setMatchModal({ match: null, leagues: [], referee: null, loading: false })}
+        footer={null}
+        width={860}
+      >
+        {matchModal.match && (
+          <div>
+            <Descriptions bordered size="small" column={3} style={{ marginBottom: 16 }}>
+              <Descriptions.Item label="赛事类别">{CATEGORY_LABELS[matchModal.match.category] || matchModal.match.category}</Descriptions.Item>
+              <Descriptions.Item label="赛事级别">{LEVEL_LABELS[matchModal.match.level] || matchModal.match.level}</Descriptions.Item>
+              <Descriptions.Item label="单场规费">{matchInfo ? fmtFee(matchInfo.entryFee) : '-'}</Descriptions.Item>
+              <Descriptions.Item label="开赛时间">{matchInfo ? new Date(matchInfo.startTime).toLocaleString() : '-'}</Descriptions.Item>
+              <Descriptions.Item label="参赛省联赛数">{matchModal.match.leagueCount}</Descriptions.Item>
+              <Descriptions.Item label="收费合计">{fmtFee(matchModal.match.feeTotal)}</Descriptions.Item>
+            </Descriptions>
+
+            {matchModal.referee ? (
+              <Alert
+                type="success" showIcon style={{ marginBottom: 16 }}
+                message={`执裁裁判：${matchModal.referee.refereeName}（${matchModal.referee.organization}）`}
+                description={`通信地址：${matchModal.referee.refereeAddress}`}
+              />
+            ) : (
+              <Alert type="warning" showIcon style={{ marginBottom: 16 }} message="该场比赛暂未指派裁判" />
+            )}
+
+            <Table
+              title={() => <strong>报名参赛的省联赛（{matchModal.leagues.length} 个，与统计计数一致）</strong>}
+              rowKey="leagueId"
+              size="small"
+              loading={matchModal.loading}
+              dataSource={matchModal.leagues}
+              pagination={false}
+              locale={{ emptyText: <Empty description="暂无省联赛报名该场比赛" /> }}
+              columns={[
+                { title: '联赛 ID', dataIndex: 'leagueId', width: 90 },
+                { title: '省联赛名称', dataIndex: 'leagueName', ellipsis: true },
+                { title: '通信地址', dataIndex: 'leagueAddress', ellipsis: true },
+                { title: '参赛人员名单', dataIndex: 'leagueMemberNames', ellipsis: true }
+              ]}
+            />
+          </div>
+        )}
+      </Modal>
+
       <style>{`
         @media print {
           .no-print { display: none !important; }

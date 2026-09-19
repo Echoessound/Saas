@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Table, Button, Modal, Form, Input, InputNumber, Select, DatePicker, Typography, Space, message, Tag, Popconfirm } from 'antd';
+import { Card, Table, Button, Modal, Form, Input, InputNumber, Select, DatePicker, Typography, Space, message, Tag, Popconfirm, Tooltip } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, TrophyOutlined, SolutionOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import api from '../api';
@@ -147,7 +147,15 @@ export default function AdminManage() {
     {
       title: '生效报名',
       dataIndex: 'paidOrderRefs',
-      render: n => n > 0 ? <Tag color="orange">{n} 笔</Tag> : <Tag color="green">无</Tag>
+      render: n => n > 0 ? (
+        <Tooltip title="该比赛已有省联赛付款报名：禁止删除，且不可变更类别与级别">
+          <Tag color="orange">{n} 个省联赛已报名</Tag>
+        </Tooltip>
+      ) : (
+        <Tooltip title="暂无生效报名，可自由编辑或删除">
+          <Tag color="green">暂无省联赛报名</Tag>
+        </Tooltip>
+      )
     },
     {
       title: '操作',

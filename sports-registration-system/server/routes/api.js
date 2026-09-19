@@ -341,8 +341,51 @@ router.get('/committee/referee-matches', requireRole('COMMITTEE_ADMIN'), async (
 });
 
 // -------------------------------------------------------------
-// 三、组委会统计总览（仅管理员）
+// 三、组委会统计总览与明细（仅管理员）
 // -------------------------------------------------------------
+
+// 全部省联赛（供下拉选择与"参赛省联赛数"明细）
+router.get('/committee/leagues', requireRole('COMMITTEE_ADMIN'), async (req, res) => {
+  try {
+    const leagues = await League.find().sort({ leagueId: 1 });
+    const orders = await Order.find({ leagueId: { $in: leagues.map(l => l.leagueId) } });
+    const orderMap = Object.fromEntries(orders.map(o => [o.leagueId, o]));
+    res.json(leagues.map(l => ({
+      ...l.toObject(),
+      orderStatus: orderMap[l.leagueId]?.status || 'NONE',
+      orderNumber: orderMap[l.leagueId]?.orderNumber || null,
+      paidFee: orderMap[l.leagueId]?.paidFee ?? null
+    })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 按状态查询报名单（生效/已取消明细）
+router.get('/committee/orders', requireRole('COMMITTEE_ADMIN'), async (req, res) => {
+  try {
+    const { status } = req.query;
+    const filter = status ? { status } : {};
+    const orders = await Order.find(filter).sort({ createdAt: -1 });
+    const leagues = await League.find({ leagueId: { $in: orders.map(o => o.leagueId) } });
+    const leagueMap = Object.fromEntries(leagues.map(l => [l.leagueId, l]));
+    res.json(orders.map(o => ({ ...o.toObject(), league: leagueMap[o.leagueId] || null })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 全部银行资金流水（实收金额明细）
+router.get('/committee/transactions', requireRole('COMMITTEE_ADMIN'), async (req, res) => {
+  try {
+    const txns = await BankTransaction.find().sort({ createdAt: -1 });
+    res.json(txns);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 统计总览
 
 router.get('/committee/stats', requireRole('COMMITTEE_ADMIN'), async (req, res) => {
   try {

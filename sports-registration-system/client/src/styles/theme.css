@@ -239,6 +239,12 @@ body {
   color: #fff;
   overflow: hidden;
   position: relative;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(15, 35, 70, 0.22);
 }
 .stat-card .ant-statistic-title {
   color: rgba(255, 255, 255, 0.82) !important;
