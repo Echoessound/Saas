@@ -1,0 +1,416 @@
+/* ============================================================
+   全国体育赛事在线报名系统 —— 全局设计系统
+   色板：竞技深蓝 + 活力蓝主色 + 金色点缀
+   ============================================================ */
+
+:root {
+  --brand-deep: #0b2447;
+  --brand-deep-2: #19376d;
+  --brand-primary: #2563eb;
+  --brand-primary-light: #60a5fa;
+  --brand-gold: #f5b942;
+  --brand-bg: #eef2f8;
+  --brand-card-radius: 14px;
+  --brand-shadow: 0 4px 20px rgba(15, 35, 70, 0.08);
+  --brand-shadow-hover: 0 12px 32px rgba(15, 35, 70, 0.14);
+}
+
+* {
+  font-family: 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+body {
+  background: var(--brand-bg);
+  background-image:
+    radial-gradient(at 15% 0%, rgba(37, 99, 235, 0.05) 0, transparent 50%),
+    radial-gradient(at 85% 10%, rgba(245, 185, 66, 0.06) 0, transparent 45%);
+  background-attachment: fixed;
+}
+
+/* ---------- 页面进入动效 ---------- */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.page-fade {
+  animation: fadeUp 0.4s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* ---------- 顶部品牌栏 ---------- */
+.app-header {
+  position: sticky !important;
+  top: 0;
+  z-index: 100;
+  height: 64px !important;
+  line-height: 64px !important;
+  padding: 0 28px !important;
+  background: linear-gradient(100deg, var(--brand-deep) 0%, var(--brand-deep-2) 60%, #2451a6 100%) !important;
+  box-shadow: 0 2px 16px rgba(6, 20, 45, 0.35);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-right: 36px;
+  white-space: nowrap;
+}
+
+.brand-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--brand-gold), #e08e0b);
+  box-shadow: 0 4px 10px rgba(245, 185, 66, 0.45);
+}
+
+.brand-title {
+  color: #fff;
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: 1px;
+  line-height: 1.25;
+}
+
+.brand-sub {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 10px;
+  letter-spacing: 2.2px;
+  line-height: 1.2;
+}
+
+/* 头部菜单透明化，与渐变栏融合 */
+.app-menu {
+  background: transparent !important;
+  border-bottom: none !important;
+}
+.app-menu.ant-menu-dark .ant-menu-item {
+  border-radius: 8px;
+  margin: 0 2px;
+}
+.app-menu.ant-menu-dark .ant-menu-item-selected {
+  background: rgba(255, 255, 255, 0.16) !important;
+  font-weight: 600;
+}
+
+.header-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 20px;
+  transition: background 0.2s;
+}
+.header-user:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* ---------- 页脚 ---------- */
+.app-footer {
+  text-align: center;
+  color: #8a97ab;
+  font-size: 12px;
+  padding: 20px 0 26px;
+  letter-spacing: 0.5px;
+}
+
+/* ---------- 精致卡片 ---------- */
+.pretty-card.ant-card {
+  border-radius: var(--brand-card-radius);
+  border: 1px solid rgba(20, 50, 100, 0.06);
+  box-shadow: var(--brand-shadow);
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+.pretty-card.ant-card:hover {
+  box-shadow: var(--brand-shadow-hover);
+}
+
+.pretty-card .ant-card-head {
+  border-bottom: 1px solid #eef1f6;
+}
+
+/* ---------- 页面标题区 ---------- */
+.page-hero {
+  border-radius: var(--brand-card-radius);
+  padding: 26px 32px;
+  margin-bottom: 18px;
+  color: #fff;
+  background: linear-gradient(115deg, var(--brand-deep) 0%, var(--brand-deep-2) 55%, var(--brand-primary) 115%);
+  box-shadow: var(--brand-shadow);
+  position: relative;
+  overflow: hidden;
+}
+.page-hero::after {
+  content: '';
+  position: absolute;
+  right: -60px;
+  top: -60px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+}
+.page-hero::before {
+  content: '';
+  position: absolute;
+  right: 60px;
+  bottom: -90px;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  background: rgba(245, 185, 66, 0.12);
+}
+.page-hero h3, .page-hero .hero-title {
+  color: #fff !important;
+  margin: 0 0 6px !important;
+  font-size: 22px;
+  letter-spacing: 1px;
+}
+.page-hero .hero-sub {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  letter-spacing: 0.5px;
+}
+
+/* ---------- 报名向导：比赛选项 ---------- */
+.match-category-card.ant-card {
+  border-radius: 12px;
+  border: 1px solid #e6ecf5;
+  transition: box-shadow 0.2s;
+}
+.match-category-card .ant-card-head {
+  background: linear-gradient(90deg, #f4f8ff, #fbfcff);
+  border-radius: 12px 12px 0 0;
+  font-weight: 600;
+}
+
+.match-list .ant-checkbox-wrapper {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin-inline-start: 0 !important;
+}
+.match-list .ant-checkbox-wrapper > span:last-child {
+  flex: 1;
+  padding-inline-end: 0;
+}
+
+.match-option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  transition: all 0.18s ease;
+}
+.match-option:hover {
+  background: #f2f7ff;
+  border-color: #c9dcff;
+}
+.ant-checkbox-wrapper-checked .match-option,
+.match-option.checked {
+  background: #eaf2ff;
+  border-color: var(--brand-primary);
+}
+
+/* 结算条 */
+.checkout-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 22px;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #fff8ec, #fffdf7);
+  border: 1px solid #f3e2b3;
+}
+
+/* ---------- 统计卡片 ---------- */
+.stat-card {
+  border-radius: var(--brand-card-radius) !important;
+  border: none !important;
+  color: #fff;
+  overflow: hidden;
+  position: relative;
+}
+.stat-card .ant-statistic-title {
+  color: rgba(255, 255, 255, 0.82) !important;
+  font-size: 13px;
+}
+.stat-card .ant-statistic-content {
+  color: #fff !important;
+  font-weight: 700;
+}
+.stat-card::after {
+  content: '';
+  position: absolute;
+  right: -30px;
+  bottom: -40px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.10);
+}
+.stat-blue { background: linear-gradient(135deg, #2563eb, #1e40af); }
+.stat-green { background: linear-gradient(135deg, #0ea472, #047857); }
+.stat-amber { background: linear-gradient(135deg, #f59e0b, #b45309); }
+.stat-navy { background: linear-gradient(135deg, #19376d, #0b2447); }
+
+/* ---------- 表格整体质感 ---------- */
+.ant-table-thead > tr > th {
+  background: #f6f9fd !important;
+  font-weight: 600 !important;
+  color: #33475f !important;
+}
+.ant-table-tbody > tr {
+  transition: background 0.15s;
+}
+.ant-table-tbody > tr:hover > td {
+  background: #f2f7ff !important;
+}
+.ant-table {
+  border-radius: 10px;
+}
+
+/* ---------- 步骤条 ---------- */
+.ant-steps-item-finish .ant-steps-item-icon {
+  border-color: var(--brand-primary);
+}
+
+/* ---------- 登录页 ---------- */
+.login-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(at 20% 20%, rgba(37, 99, 235, 0.35) 0, transparent 55%),
+    radial-gradient(at 80% 85%, rgba(245, 185, 66, 0.22) 0, transparent 50%),
+    linear-gradient(135deg, #081a38 0%, #0b2447 45%, #143362 100%);
+  padding: 24px;
+}
+
+.login-panel {
+  display: flex;
+  width: 880px;
+  max-width: 96vw;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+  animation: fadeUp 0.5s ease both;
+}
+
+.login-brand-side {
+  flex: 1;
+  padding: 48px 40px;
+  color: #fff;
+  background:
+    radial-gradient(at 80% 10%, rgba(245, 185, 66, 0.18) 0, transparent 50%),
+    linear-gradient(160deg, #10294f 0%, #0b2447 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.login-brand-side .slogan {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  line-height: 1.5;
+  margin-top: 28px;
+}
+
+.login-brand-side .slogan-en {
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 3px;
+  font-size: 11px;
+  margin-top: 10px;
+}
+
+.login-feature {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  margin-top: 14px;
+}
+.login-feature .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--brand-gold);
+  box-shadow: 0 0 8px rgba(245, 185, 66, 0.8);
+}
+
+.login-form-side {
+  width: 420px;
+  background: #fff;
+  padding: 36px 36px 24px;
+}
+
+@media (max-width: 760px) {
+  .login-brand-side { display: none; }
+  .login-form-side { width: 100%; }
+}
+
+/* ---------- 凭单纸样 ---------- */
+.voucher-paper {
+  border: 3px double #1a3a6b !important;
+  border-radius: 4px;
+  position: relative;
+  box-shadow: 0 8px 30px rgba(15, 35, 70, 0.10);
+}
+.voucher-paper::before {
+  content: '报名凭证';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-24deg);
+  font-size: 90px;
+  font-weight: 800;
+  letter-spacing: 18px;
+  color: rgba(26, 58, 107, 0.045);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.voucher-head {
+  text-align: center;
+  border-bottom: 2px solid #1a3a6b;
+  padding-bottom: 16px;
+  position: relative;
+}
+.voucher-table th, .voucher-table td {
+  border: 1px solid #7d93b8 !important;
+}
+.voucher-seal {
+  width: 110px;
+  height: 110px;
+  border: 3px solid rgba(210, 60, 50, 0.75);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: rgba(210, 60, 50, 0.85);
+  font-size: 13px;
+  font-weight: 700;
+  transform: rotate(-12deg);
+  letter-spacing: 2px;
+  line-height: 1.5;
+}
+
+/* ---------- 打印 ---------- */
+@media print {
+  body { background: #fff !important; }
+  .app-header, .app-footer, .no-print { display: none !important; }
+  .page-fade { animation: none !important; }
+  .pretty-card.ant-card { box-shadow: none !important; border: none !important; }
+}

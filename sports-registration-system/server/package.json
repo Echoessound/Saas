@@ -1,0 +1,17 @@
+{
+  "name": "sports-registration-server",
+  "version": "1.0.0",
+  "description": "全国体育赛事报名系统 - 后端服务 (Express + MongoDB)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node seed.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^8.5.0"
+  }
+}
